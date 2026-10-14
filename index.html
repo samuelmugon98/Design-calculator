@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PIP Design Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: Swiss-style single column on a strict 8px grid; numbered step rail on top, sticky action bar with the live total at the bottom. */
+:root {
+  --bg: #F7FAFA;
+  --surface: #FFFFFF;
+  --sunken: #EEF3F3;
+  --ink: #0F1E1D;
+  --muted: #4B5B5A;
+  --line: #DCE5E4;
+  --line-strong: #B9C8C6;
+  --primary: #0F766E;
+  --primary-hover: #115E59;
+  --primary-soft: #E3F3F1;
+  --on-primary: #FFFFFF;
+  --warn: #9A4A06;
+  --warn-bg: #FFF1E3;
+  --ok: #166534;
+  --ok-bg: #E4F5EA;
+  --font: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r: 12px;
+  --r-sm: 8px;
+  --t: 180ms cubic-bezier(.2,.7,.3,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1312; --surface: #121C1B; --sunken: #1A2625; --ink: #E6EFEE; --muted: #9DB0AE; --line: #243331; --line-strong: #36504D;
+    --primary: #2DD4BF; --primary-hover: #5EEAD4; --primary-soft: #133430; --on-primary: #042F2C;
+    --warn: #FDBA74; --warn-bg: #3A2412; --ok: #86EFAC; --ok-bg: #12301E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1312; --surface: #121C1B; --sunken: #1A2625; --ink: #E6EFEE; --muted: #9DB0AE; --line: #243331; --line-strong: #36504D;
+  --primary: #2DD4BF; --primary-hover: #5EEAD4; --primary-soft: #133430; --on-primary: #042F2C;
+  --warn: #FDBA74; --warn-bg: #3A2412; --ok: #86EFAC; --ok-bg: #12301E; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 800px; margin: 0 auto; padding: 40px 24px 136px; display: grid; gap: 32px; }
+h1, h2 { margin: 0; text-wrap: balance; }
+h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.005em; display: flex; align-items: center; gap: 10px; }
+h1 .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+h2 { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.tnum { font-variant-numeric: tabular-nums; }
+.label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.head { display: grid; gap: 8px; }
+.head p { color: var(--muted); max-width: 60ch; }
+
+/* Step rail */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--line); }
+.steps button { width: 100%; min-height: 56px; border: 0; background: transparent; text-align: left; padding: 10px 0 0; display: grid; gap: 2px; color: var(--muted); position: relative; transition: color var(--t); }
+.steps button::before { content: ""; position: absolute; left: 0; right: 0; top: -2px; height: 2px; background: transparent; transition: background var(--t); }
+.steps button:hover { color: var(--ink); }
+.steps .n { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; }
+.steps .t { font-size: 0.9rem; font-weight: 600; }
+.steps button.done::before { background: var(--line-strong); }
+.steps button[aria-current="step"] { color: var(--ink); }
+.steps button[aria-current="step"]::before { background: var(--primary); }
+.steps button[aria-current="step"] .n { color: var(--primary); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: var(--r-sm); border: 1px solid var(--line-strong); background: var(--surface); font-weight: 600; font-size: 0.92rem; white-space: nowrap; transition: background var(--t), border-color var(--t), color var(--t); }
+.btn:hover { background: var(--sunken); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--muted); padding: 0 12px; }
+.btn.quiet:hover { background: var(--sunken); color: var(--ink); }
+
+/* Step 1 */
+.search { position: relative; }
+.search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.search input { width: 100%; min-height: 48px; padding: 0 14px 0 44px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); transition: border-color var(--t), box-shadow var(--t); }
+.search input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: 36px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0 14px; font-size: 0.85rem; font-weight: 500; transition: background var(--t), border-color var(--t), color var(--t); }
+.chip:hover { border-color: var(--line-strong); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.stack { display: grid; gap: 16px; }
+.stack-lg { display: grid; gap: 32px; }
+.group { display: grid; gap: 12px; }
+.group-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; }
+.opt { position: relative; display: flex; gap: 12px; align-items: center; min-height: 56px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); cursor: pointer; transition: border-color var(--t), background var(--t); }
+.opt:hover { border-color: var(--line-strong); }
+.opt input { position: absolute; opacity: 0; pointer-events: none; }
+.box { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line-strong); display: grid; place-items: center; flex: none; color: transparent; transition: background var(--t), border-color var(--t), color var(--t); }
+.box svg { width: 14px; height: 14px; stroke-width: 3; }
+.opt input:checked ~ .box, .tog input:checked ~ .box { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.opt input:focus-visible ~ .box, .tog input:focus-visible ~ .box { outline: 2px solid var(--primary); outline-offset: 2px; }
+.opt:has(input:checked), .tog:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.opt .txt { min-width: 0; display: grid; }
+.opt .nm { font-weight: 600; font-size: 0.92rem; line-height: 1.3; }
+.opt .u { font-size: 0.8rem; color: var(--muted); }
+
+/* Step 2 */
+.note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-sm); background: var(--primary-soft); font-size: 0.9rem; }
+.note svg { color: var(--primary); margin-top: 2px; }
+.rows { display: grid; border-top: 2px solid var(--ink); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 24px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.row .nm { font-weight: 700; line-height: 1.3; }
+.row .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+.row .tot { font-size: 1.25rem; font-weight: 700; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.row .tot small { font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-left: 2px; }
+.row .ctrls { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; }
+.ctrl { display: grid; gap: 6px; }
+.ctrl > span { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.stepper { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; background: var(--surface); }
+.stepper button { border: 0; background: transparent; width: 44px; min-height: 44px; display: grid; place-items: center; color: var(--ink); transition: background var(--t); }
+.stepper button:hover { background: var(--sunken); }
+.stepper input { width: 56px; border: 0; border-inline: 1px solid var(--line); text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; background: transparent; -moz-appearance: textfield; }
+.stepper input:focus { outline: none; background: var(--primary-soft); }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.seg { display: inline-flex; flex-wrap: wrap; border-radius: var(--r-sm); padding: 3px; background: var(--sunken); gap: 2px; }
+.seg button { border: 0; background: transparent; min-height: 38px; padding: 0 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: var(--muted); transition: background var(--t), color var(--t); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15,30,29,.14); }
+.seg button.hi[aria-pressed="true"] { background: var(--warn-bg); color: var(--warn); }
+.x { border: 0; background: transparent; color: var(--muted); width: 44px; height: 44px; border-radius: var(--r-sm); display: grid; place-items: center; margin-left: auto; transition: background var(--t), color var(--t); }
+.x:hover { background: var(--sunken); color: var(--ink); }
+.warn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 0.8rem; font-weight: 600; color: var(--warn); background: var(--warn-bg); padding: 0 10px; border-radius: 6px; align-self: center; }
+.warn svg { width: 15px; height: 15px; }
+
+/* Step 3 */
+.toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; }
+.tog { position: relative; display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); cursor: pointer; font-weight: 500; font-size: 0.92rem; transition: border-color var(--t), background var(--t); }
+.tog:hover { border-color: var(--line-strong); }
+.tog input { position: absolute; opacity: 0; pointer-events: none; }
+.tog .t { flex: 1; min-width: 0; }
+.tog .pct { font-size: 0.85rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Step 4 */
+.hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); border-top: 2px solid var(--ink); }
+.hero > div { padding: 20px 0; display: grid; gap: 6px; align-content: start; }
+.hero > div + div { border-left: 1px solid var(--line); padding-left: 24px; }
+.big { font-size: 4.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.big small { font-size: 1.25rem; font-weight: 700; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.big.md { font-size: 3rem; }
+.hero .sub { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.pill.final { background: var(--ok-bg); color: var(--ok); }
+.pill.prov { background: var(--warn-bg); color: var(--warn); }
+.pill svg { width: 14px; height: 14px; }
+.sheet { display: grid; }
+.sheet div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.sheet .r { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sheet .total { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 800; font-size: 1.05rem; }
+.cps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cp { padding: 14px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line); display: grid; gap: 4px; }
+.cp b { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cp .meter { height: 4px; border-radius: 2px; background: var(--sunken); overflow: hidden; margin-top: 6px; }
+.cp .meter i { display: block; height: 100%; background: var(--primary); }
+details { border-top: 1px solid var(--line); }
+details summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.92rem; list-style: none; }
+details summary::-webkit-details-marker { display: none; }
+details summary svg { transition: transform var(--t); }
+details[open] summary svg { transform: rotate(90deg); }
+details .sheet div:last-child { border-bottom: 0; }
+
+.empty { padding: 40px 24px; text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--r); color: var(--muted); display: grid; gap: 12px; justify-items: center; }
+
+/* Action bar */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--line); padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.bar-in { max-width: 800px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.bar .sum { display: grid; line-height: 1.2; }
+.bar .sum b { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bar .sum b small { font-size: 0.9rem; font-weight: 700; color: var(--muted); }
+.bar .sum span { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar .nav { display: flex; gap: 8px; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: var(--r-sm); font-size: 0.88rem; font-weight: 600; z-index: 50; display: flex; gap: 8px; align-items: center; }
+
+@media (max-width: 600px) {
+  .wrap { padding: 24px 16px 124px; gap: 24px; }
+  .bar { padding-left: 16px; padding-right: 16px; }
+  h2 { font-size: 1.6rem; }
+  .steps .t { font-size: 0.78rem; }
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero > div + div { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); }
+  .big { font-size: 3.5rem; }
+  .cps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bar .btn.back span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <h1><span class="logo"><svg class="i" style="width:16px;height:16px"><use href="#i-clock"/></svg></span>PIP Design Estimator</h1>
+    <button class="btn quiet" id="btn-reset" type="button"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg><span>Reset</span></button>
+  </header>
+  <ol class="steps" id="steps"></ol>
+  <main id="main"></main>
+</div>
+<div class="bar"><div class="bar-in" id="bar"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const CATALOG = [
+  ["RS-01","Social media","Static post (single image)","per piece",[1,2,4],.15,.2,"Composition, image treatment and typography with copy provided; export per network. Complex = photo montage or custom illustration."],
+  ["RS-02","Social media","Carousel – cover and visual system","per carousel",[1,1.5,2.5],.15,.2,"Slide 1 (hook) plus the grid and style the other slides follow. Add once per carousel."],
+  ["RS-03","Social media","Carousel – inner slide","per slide",[.25,.5,1],.15,.2,"Multiply by the number of inner slides. E.g. a 7-slide Medium carousel = 1.5 + 6 × 0.5 = 4.5 h of design."],
+  ["RS-04","Social media","Story / Reel cover (9:16)","per piece",[.5,1,2],.15,.2,"Vertical format. Simple = adapting an existing post."],
+  ["RS-05","Social media","Format adaptation to another network or size","per adaptation",[.25,.5,1],.15,.2,"Rearranging an already approved piece without redesigning it. Also use for A/B variants."],
+  ["RS-06","Social media","Paid ad (paid social / display) – master piece","per piece",[1.5,3,5],.15,.2,"Conversion-focused main piece. Extra sizes are added as adaptations (RS-05)."],
+  ["RS-07","Social media","Video thumbnail / webinar cover","per piece",[.75,1.5,3],.15,.2,"YouTube, LinkedIn Live, admissions webinars or open classes."],
+  ["RS-08","Social media","Simple animated post (GIF / motion ≤ 10 s)","per piece",[1.5,3,5],.15,.2,"Animating an already approved static piece. For longer videos use CM-06."],
+  ["GI-01","Printable guides","One-page printable guide (one-pager)","per guide",[2,4,7],.2,.2,"Summary, checklist or quick guide in A4/Letter. Complex = dense hierarchical information or custom illustration."],
+  ["GI-02","Printable guides","Student activity sheet / worksheet","per page",[1.5,3,5],.2,.2,"Exercises, answer spaces and instructions. Check legibility when printed in black and white."],
+  ["GI-03","Printable guides","Multi-page guide – cover and editorial system","per guide",[3,5,8],.2,.2,"Cover, grid, paragraph styles and master pages. Add once per document."],
+  ["GI-04","Printable guides","Multi-page guide – text interior page","per page",[.75,1.25,2],.2,.2,"Mostly text layout with hierarchy, callouts and the odd visual element."],
+  ["GI-05","Printable guides","Multi-page guide – interior page with charts or illustration","per page",[1.5,2.5,4],.2,.2,"Custom tables, diagrams, charts or illustrations within the page."],
+  ["GI-06","Printable guides","Educational infographic","per piece",[4,8,16],.2,.2,"Information structure and design. Complex = lots of data or detailed illustration."],
+  ["GI-07","Printable guides","Print-ready final artwork (preflight)","per document",[.5,1,2],0,0,"CMYK, bleed, resolution, embedded fonts and print PDF. A quality-control task in itself (no extra QA or revisions)."],
+  ["GI-08","Printable guides","Course certificate / diploma","per design",[1,2,4],.2,.2,"Certificate template. Complex = seals, security elements or per-program versions."],
+  ["PR-00","Presentations","Full presentation (deck) – quantity = number of slides","slides in deck",[0.9333,1.8667,2.9333],0,.2,"Recommended for full decks. Hours scale with deck size: includes storyboard, every slide, QA and an exportable version.", true],
+  ["PR-01","Presentations","Presentation – storyboard / visual structure","per presentation",[1,2,4],.15,.2,"Sketch of the flow and slide type for each section before production. Avoids rework on long decks. For a full deck use PR-00."],
+  ["PR-02","Presentations","Presentation – master template (master slides)","per presentation",[3,6,12],.15,.2,"Only if there is no approved template. 6–10 layouts, text styles, charts and tables. If it must also be built editable in Google Slides/PowerPoint, add FP-04."],
+  ["PR-03","Presentations","Cover or section divider slide","per slide",[.75,1.25,2],.15,.2,"High-impact visual slides with little text. For a full deck use PR-00."],
+  ["PR-04","Presentations","Content slide (text + image)","per slide",[.75,1.25,2],.15,.2,"Simple = template and final copy. The most common type in educational decks. For a full deck use PR-00."],
+  ["PR-05","Presentations","Data slide (charts or tables)","per slide",[1.25,2,3],.15,.2,"Editable, styled charts. Complex = multiple series, comparisons or dashboards. For a full deck use PR-00."],
+  ["PR-06","Presentations","Slide with custom diagram, infographic or illustration","per slide",[2,3,5],.15,.2,"Processes, timelines, concept maps, illustrations. For a full deck use PR-00."],
+  ["PR-07","Presentations","Existing slide reformatted to a new template","per slide",[.15,.25,.5],.15,.2,"Content already exists; only the style is applied (4–8 slides per hour). Not the same as FP-03 (rebuilding a Figma design in another tool)."],
+  ["PR-08","Presentations","Animations and transitions","per animated slide",[.15,.25,.5],.15,.2,"Added on top of the base slide: builds, morph, entrances."],
+  ["PR-09","Presentations","Exportable version (PDF, handout or printable)","per presentation",[.5,1,2],.15,.2,"Adjustments for reading without a presenter, export and link check. For a full deck use PR-00."],
+  ["PR-10","Presentations","Reusable template for teachers or client","per template",[10,16,28],.15,.2,"15–25 editable layouts plus a short usage guide so the client can build their own classes."],
+  ["UX-01","UX/Web – Phases","Discovery and information architecture","per project",[4,8,16],.15,.2,"Sitemap, user flows and content hierarchy."],
+  ["UX-02","UX/Web – Phases","Wireframe – Desktop","per page",[1,2,3],.15,.2,"Low/medium fidelity to validate structure before UI."],
+  ["UX-03","UX/Web – Phases","Wireframe – Mobile","per page",[.5,1,1.5],.15,.2,"Adaptation of the desktop wireframe (≈50%)."],
+  ["UX-04","UX/Web – Phases","UI style guide / base component library","per project",[8,16,32],.15,.2,"Colors, typography, buttons, forms, cards. Reused across all pages."],
+  ["UX-05","UX/Web – Phases","Interactive prototype (clickable)","per flow",[1,2,4],.15,.2,"Linking screens for user testing or client presentation."],
+  ["UX-06","UX/Web – Phases","Additional screen state (empty, error, loading, success)","per state",[.5,1,1.5],.15,.2,"Each real screen usually needs several states: one page is not just one design."],
+  ["UX-07","UX/Web – Phases","Developer handoff (specs and asset export)","per page",[.5,1,1.5],.15,.2,"Annotations, measurements, responsive behavior and export."],
+  ["UX-08","UX/Web – Phases","Implementation review (design QA of the built site)","per page",[.5,1,1.5],0,0,"Compare the build against the design on desktop and mobile. QA in itself (no extra QA or revisions)."],
+  ["WEB-01","UX/Web – Pages","Home – Desktop","per page",[6,10,16],.2,.25,"Hero, value proposition, featured courses, testimonials, CTA, navigation and footer (≈5–8 sections)."],
+  ["WEB-02","UX/Web – Pages","Home – Mobile","per page",[3,5,8],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-03","UX/Web – Pages","Course or campaign landing page – Desktop","per page",[5,8,12],.2,.25,"Sign-up one-pager: benefits, syllabus, instructors, price, FAQ and form."],
+  ["WEB-04","UX/Web – Pages","Course or campaign landing page – Mobile","per page",[2.5,4,6],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-05","UX/Web – Pages","Standard interior page (About, Contact, FAQ) – Desktop","per page",[2,4,6],.2,.25,"Pages with few sections that reuse Home components."],
+  ["WEB-06","UX/Web – Pages","Standard interior page (About, Contact, FAQ) – Mobile","per page",[1,2,3],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-07","UX/Web – Pages","Course catalog / listing with filters – Desktop","per page",[4,6,10],.2,.25,"Course cards, filters, search, pagination."],
+  ["WEB-08","UX/Web – Pages","Course catalog / listing with filters – Mobile","per page",[2,3,5],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-09","UX/Web – Pages","Course or program detail – Desktop","per page",[4,7,10],.2,.25,"Expandable syllabus, instructors, format, price, sticky CTA."],
+  ["WEB-10","UX/Web – Pages","Course or program detail – Mobile","per page",[2,3.5,5],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-11","UX/Web – Pages","Pricing / plans – Desktop","per page",[3,5,8],.2,.25,"Plan comparison table, monthly/annual toggle, FAQ."],
+  ["WEB-12","UX/Web – Pages","Pricing / plans – Mobile","per page",[1.5,2.5,4],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-13","UX/Web – Pages","Blog (listing + article template) – Desktop","per page",[3,5,8],.2,.25,"Two templates: article listing and single article."],
+  ["WEB-14","UX/Web – Pages","Blog (listing + article template) – Mobile","per page",[1.5,2.5,4],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-15","UX/Web – Pages","Form step (sign-up, checkout or onboarding) – Desktop","per step",[2,3,5],.2,.25,"Each step of the flow counts as one screen. Add error states with UX-06."],
+  ["WEB-16","UX/Web – Pages","Form step (sign-up, checkout or onboarding) – Mobile","per step",[1,1.5,2.5],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["WEB-17","UX/Web – Pages","Platform screen (student dashboard, LMS, teacher panel) – Desktop","per screen",[4,8,14],.2,.25,"Product screens with dynamic data, tables and multiple user roles."],
+  ["WEB-18","UX/Web – Pages","Platform screen (student dashboard, LMS, teacher panel) – Mobile","per screen",[2,4,7],.2,.25,"Adaptation of the approved desktop version (≈50%). For mobile-first projects, swap values with the Desktop row."],
+  ["EM-01","Email marketing","New email / newsletter template (responsive)","per template",[4,8,12],.25,.2,"Desktop and mobile versions plus rendering tests in email clients (hence 25% QA)."],
+  ["EM-02","Email marketing","Email built from an existing template","per email",[1,2,3],.25,.2,"Welcome, class reminder, nurturing, course announcement."],
+  ["EM-03","Email marketing","Email banner / institutional signature","per piece",[.5,1,2],.25,.2,"Campaign headers or signatures for the academic team."],
+  ["CM-01","Campaign & brand","Campaign key visual / graphic concept","per campaign",[4,8,12],.15,.25,"The visual base all pieces derive from. Includes 1 creative route; each additional route is added with FP-02."],
+  ["CM-02","Campaign & brand","Course cover for platform (LMS / marketplace)","per piece",[1,2,3.5],.15,.25,"Course cover image or thumbnail to the platform's specs."],
+  ["CM-03","Campaign & brand","Custom spot illustration","per illustration",[2,4,8],.15,.25,"Illustrations for web, guides or social. Complex = scenes with characters."],
+  ["CM-04","Campaign & brand","Custom icon","per icon",[.5,1,2],.15,.25,"In sets, the first icon defines the style and takes longer; the rest go faster."],
+  ["CM-05","Campaign & brand","Product mockup (platform or app on devices)","per mockup",[.5,1,2],.15,.25,"Platform screenshots placed on laptop, tablet or phone."],
+  ["CM-06","Campaign & brand","Short motion graphics video (explainer, reel)","per 15 s",[2,4,8],.2,.25,"2D animation with existing assets. Excludes script, voice-over and music."],
+  ["FP-01","Phases & production","Project brief and preparation","per project",[.5,1,2],0,0,"Kickoff, content review, references, branding and requirements. Use for multi-deliverable projects; already included for single pieces."],
+  ["FP-02","Phases & production","Creative exploration – additional visual proposal","per proposal",[2,4,6],0,0,"Each extra visual direction presented to choose from. The first proposal is already included in the deliverable's hours."],
+  ["FP-03","Phases & production","Production – editable rebuild in another tool (e.g. Figma → Google Slides)","per slide / page",[.25,.5,1],.15,.1,"Rebuilding layouts so the client can edit them: text boxes, styles, native charts. Estimated separately from design."],
+  ["FP-04","Phases & production","Production – editable master template in Google Slides / PowerPoint","per template",[2,4,8],.15,.1,"Building masters, styles and layouts in the final tool from the approved design."],
+  ["FP-05","Phases & production","Final project delivery (cross-check and packaging)","per project",[.5,1,2],0,0,"Final review of content, consistency, formats, links and file names. In addition to each piece's QA."]
+].map(([id,cat,name,unit,h,qa,rev,note,deck]) => ({id,cat,name,unit,h,qa,rev,note,deck:!!deck}));
+const BY_ID = Object.fromEntries(CATALOG.map(i => [i.id, i]));
+const CATS = [...new Set(CATALOG.map(i => i.cat))];
+
+/* Deck hours per full deck (no revisions) at 15 / 30 / 60 slides, by complexity */
+const DECK_REF = [[16,28,50],[32,56,104],[50,88,160]];
+const DECK_REWORK = 0.20, DECK_QA = 0.15;
+const P = { hoursPerDay: 8 * 0.75, minQA: 0.25, buffer: 0.15, feedbackDays: 2, defaultRounds: 2 };
+
+const CX = [["s","Simple"],["m","Medium"],["c","Complex"],["h","High"]];
+const cxIndex = k => k === "s" ? 0 : k === "m" ? 1 : 2; // High uses the Complex hours
+
+const READY = ["Brand guidelines available","Copy final and approved","Number of pieces defined","Visual direction agreed","Design QA rounds agreed","Production tool defined","QA requirements known","Timeline is realistic"];
+const FACTORS = [["New brand or no style guide",.20],["Copy or data not final",.15],["More than 3 approvers",.15],["Dense academic or technical content",.10],["Strict accessibility (WCAG 2.1 AA)",.10],["Additional language version",.25],["Junior designer assigned",.25]];
+const STEPS = ["Deliverables","Quantities","Conditions","Estimate"];
+
+/* ---------------- State */
+const blank = () => ({ step: 0, lines: [], ready: READY.map(() => false), factors: FACTORS.map(() => false), designers: 1 });
+let state = blank();
+const KEY = "pip-estimator-v2";
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.lines)) { state = Object.assign(blank(), s); state.lines = state.lines.filter(l => BY_ID[l.id]); } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+/* ---------------- Calculation (mirrors the Excel formulas) */
+function calcLine(line) {
+  const item = BY_ID[line.id], ci = cxIndex(line.cx);
+  const qty = Math.max(0, Number(line.qty) || 0), rounds = Math.max(0, Number(line.rounds) || 0);
+  let base, rev;
+  if (item.deck) {
+    const [a, b, c] = DECK_REF[ci];
+    base = Math.max(0, qty <= 30 ? a + (qty - 15) * (b - a) / 15 : b + (qty - 30) * (c - b) / 30);
+    rev = base / (1 + DECK_QA) * DECK_REWORK * rounds;
+  } else {
+    const design = qty * item.h[ci];
+    base = design + (item.qa === 0 ? 0 : Math.max(design * item.qa, P.minQA));
+    rev = design * item.rev * rounds;
+  }
+  const warn = line.cx === "h" ? "Validate with Design Lead" : item.deck && qty > 40 ? "Deliver in batches" : "";
+  return { item, qty, rounds, base, rev, total: base + rev, warn };
+}
+function calcAll(s) {
+  const lines = s.lines.map(l => ({ line: l, ...calcLine(l) }));
+  const subtotal = lines.reduce((a, l) => a + l.total, 0);
+  const factorPct = FACTORS.reduce((a, f, i) => a + (s.factors[i] ? f[1] : 0), 0);
+  const adj = subtotal * factorPct;
+  const buffer = (subtotal + adj) * P.buffer;
+  const total = subtotal + adj + buffer;
+  const designers = Math.max(1, Number(s.designers) || 1);
+  const maxRounds = lines.length ? Math.max(...lines.map(l => l.rounds)) : 0;
+  const days = lines.length ? Math.ceil(total / (P.hoursPerDay * designers) + maxRounds * P.feedbackDays - 1e-9) : 0;
+  const ready = s.ready.filter(Boolean).length;
+  return { lines, subtotal, factorPct, adj, buffer, total, designers, days, ready, final: ready === READY.length };
+}
+
+/* ---------------- Helpers */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fh = n => (Math.round(n * 10) / 10).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pct = n => Math.round(n * 100) + "%";
+const ic = (n, cls = "i") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const nameOf = i => i.deck ? "Full presentation (deck)" : i.name;
+let toastT;
+const toast = m => { const t = $("#toast"); t.innerHTML = ic("check") + esc(m); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1600); };
+const selected = id => state.lines.some(l => l.id === id);
+
+/* ---------------- Views */
+let catFilter = "All", query = "";
+
+function viewPick() {
+  return `<div class="stack-lg">
+    <div class="head"><h2>What are you designing?</h2><p>Select every deliverable in the project. You'll set quantities next.</p></div>
+    <div class="stack">
+      <div class="search">${ic("search")}<input type="search" id="q" placeholder="Search deliverables" value="${esc(query)}" aria-label="Search deliverables"></div>
+      <div class="chips">${["All", ...CATS].map(c => `<button type="button" class="chip" data-cat="${esc(c)}" aria-pressed="${catFilter === c}">${esc(c)}</button>`).join("")}</div>
+    </div>
+    <div id="opts">${optsHtml()}</div>
+  </div>`;
+}
+function optsHtml() {
+  const q = query.trim().toLowerCase();
+  const items = CATALOG.filter(i => (catFilter === "All" || i.cat === catFilter) && (!q || (i.id + " " + i.name + " " + i.cat).toLowerCase().includes(q)));
+  if (!items.length) return `<div class="empty">No deliverables match “${esc(query)}”.</div>`;
+  return `<div class="stack-lg">${CATS.filter(c => items.some(i => i.cat === c)).map(c => {
+    const list = items.filter(i => i.cat === c);
+    return `<section class="group"><div class="group-h"><span class="label">${esc(c)}</span><span class="label">${list.length}</span></div><div class="opts">
+    ${list.map(i => `<label class="opt" for="o-${i.id}"><input type="checkbox" id="o-${i.id}" data-pick="${i.id}" ${selected(i.id) ? "checked" : ""}><span class="box">${ic("check")}</span><span class="txt"><span class="nm">${esc(nameOf(i))}</span><span class="u">${esc(i.deck ? "Hours scale with slide count" : i.unit)}</span></span></label>`).join("")}
+  </div></section>`; }).join("")}</div>`;
+}
+
+function viewQty() {
+  const c = calcAll(state);
+  const head = `<div class="head"><h2>How many of each?</h2><p>Set quantity, complexity and design QA rounds for each deliverable.</p></div>`;
+  if (!c.lines.length) return `<div class="stack-lg">${head}<div class="empty">Pick at least one deliverable first.<button class="btn" type="button" data-go="0">${ic("left")}Choose deliverables</button></div></div>`;
+  return `<div class="stack-lg">${head}
+    <div class="note">${ic("info")}<span><b>Design QA rounds</b> are the rounds of design review and corrections each deliverable goes through. Default is ${P.defaultRounds}.</span></div>
+    <div class="rows">${c.lines.map(rowHtml).join("")}</div></div>`;
+}
+function rowHtml(r) {
+  const l = r.line, u = l.uid;
+  const step = (f, label, min) => `<label class="ctrl"><span>${label}</span><span class="stepper"><button type="button" data-step="${f}" data-d="-1" data-uid="${u}" aria-label="Decrease ${label}">${ic("minus")}</button><input type="number" min="${min}" id="${f}-${u}" data-field="${f}" data-uid="${u}" value="${l[f]}" aria-label="${label}"><button type="button" data-step="${f}" data-d="1" data-uid="${u}" aria-label="Increase ${label}">${ic("plus")}</button></span></label>`;
+  return `<div class="row">
+    <div class="nm">${esc(nameOf(r.item))}<small>${esc(r.item.deck ? "number of slides" : r.item.unit)}</small></div>
+    <div class="tot" id="tot-${u}">${fh(r.total)}<small>h</small></div>
+    <div class="ctrls">
+      ${step("qty", r.item.deck ? "Slides" : "Quantity", 1)}
+      <div class="ctrl"><span>Complexity</span><div class="seg" role="group" aria-label="Complexity">${CX.map(([k, t]) => `<button type="button" class="${k === "h" ? "hi" : ""}" data-cx="${k}" data-uid="${u}" aria-pressed="${l.cx === k}">${t}</button>`).join("")}</div></div>
+      ${step("rounds", "Design QA rounds", 0)}
+      <span class="warn" id="warn-${u}" ${r.warn ? "" : "hidden"}>${ic("alert")}<span>${r.warn}</span></span>
+      <button type="button" class="x" data-remove="${u}" aria-label="Remove ${esc(nameOf(r.item))}">${ic("x")}</button>
+    </div>
+  </div>`;
+}
+
+function viewConditions() {
+  return `<div class="stack-lg">
+    <div class="head"><h2>Project conditions</h2><p>These decide whether the estimate is final and how much extra effort to add.</p></div>
+    <section class="group"><div class="group-h"><span class="label">Confirmed before starting</span><span class="label" id="ready-count">${state.ready.filter(Boolean).length}/${READY.length}</span></div><div class="toggles">
+      ${READY.map((t, i) => `<label class="tog" for="r-${i}"><input type="checkbox" id="r-${i}" data-ready="${i}" ${state.ready[i] ? "checked" : ""}><span class="box">${ic("check")}</span><span class="t">${t}</span></label>`).join("")}
+    </div></section>
+    <section class="group"><div class="group-h"><span class="label">Extra effort</span><span class="label" id="factor-sum">+${pct(calcAll(state).factorPct)}</span></div><div class="toggles">
+      ${FACTORS.map(([t, p], i) => `<label class="tog" for="f-${i}"><input type="checkbox" id="f-${i}" data-factor="${i}" ${state.factors[i] ? "checked" : ""}><span class="box">${ic("check")}</span><span class="t">${t}</span><span class="pct">+${pct(p)}</span></label>`).join("")}
+    </div></section></div>`;
+}
+
+function viewEstimate() {
+  const c = calcAll(state);
+  return `<div class="stack-lg">
+    <div class="head" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2>Estimate</h2>
+      <span class="pill ${c.final ? "final" : "prov"}">${ic(c.final ? "check" : "alert")}${c.final ? "Final" : `Provisional · ${READY.length - c.ready} open`}</span></div>
+    <div class="hero">
+      <div><span class="label">Total hours</span><span class="big">${fh(c.total)}<small>h</small></span></div>
+      <div><span class="label">Working days</span><span class="big md">${c.days}<small>days</small></span>
+        <span class="sub">Designers <span class="stepper"><button type="button" data-des="-1" aria-label="Fewer designers">${ic("minus")}</button><input type="number" min="1" id="designers" value="${c.designers}" aria-label="Designers"><button type="button" data-des="1" aria-label="More designers">${ic("plus")}</button></span></span></div>
+    </div>
+    <div class="sheet">
+      <div><span>Deliverables (${c.lines.length})</span><span class="r">${fh(c.subtotal)} h</span></div>
+      <div><span>Extra effort (${pct(c.factorPct)})</span><span class="r">${fh(c.adj)} h</span></div>
+      <div><span>Buffer (${pct(P.buffer)})</span><span class="r">${fh(c.buffer)} h</span></div>
+      <div class="total"><span>Total</span><span class="r">${fh(c.total)} h</span></div>
+    </div>
+    <section class="group"><div class="group-h"><span class="label">Paymo alerts</span></div><div class="cps">
+      ${[.5, .75, .9, 1].map(f => `<div class="cp"><span class="label">${pct(f)}</span><b>${fh(c.total * f)} h</b><span class="meter"><i style="width:${f * 100}%"></i></span></div>`).join("")}
+    </div></section>
+    <details><summary>${ic("chev")}Hours by deliverable</summary><div class="sheet">
+      ${c.lines.map(r => `<div><span>${esc(nameOf(r.item))} <span class="muted">× ${r.qty}</span></span><span class="r">${fh(r.total)} h</span></div>`).join("") || `<div><span class="muted">No deliverables</span></div>`}
+    </div></details>
+  </div>`;
+}
+
+/* ---------------- Render */
+function render() {
+  $("#steps").innerHTML = STEPS.map((t, i) => `<li><button type="button" data-go="${i}" class="${i < state.step ? "done" : ""}" ${i === state.step ? 'aria-current="step"' : ""}><span class="n">0${i + 1}</span><span class="t">${t}</span></button></li>`).join("");
+  $("#main").innerHTML = [viewPick, viewQty, viewConditions, viewEstimate][state.step]();
+  bind();
+  renderBar();
+}
+function renderBar() {
+  const c = calcAll(state), s = state.step;
+  const next = s < 3
+    ? `<button class="btn primary" type="button" data-go="${s + 1}" ${s === 0 && !c.lines.length ? "disabled" : ""}>${s === 0 && c.lines.length ? `Continue · ${c.lines.length}` : "Next"}${ic("right")}</button>`
+    : `<button class="btn primary" type="button" id="btn-copy">${ic("copy")}Copy summary</button>`;
+  $("#bar").innerHTML = `<div class="sum"><b>${fh(c.total)}<small> h</small></b><span>${c.days} working days</span></div>
+    <div class="nav">${s > 0 ? `<button class="btn back" type="button" data-go="${s - 1}" aria-label="Back">${ic("left")}<span>Back</span></button>` : ""}${next}</div>`;
+  const cp = $("#btn-copy"); if (cp) cp.onclick = copySummary;
+}
+function go(i) { state.step = Math.max(0, Math.min(3, i)); save(); render(); window.scrollTo({ top: 0 }); }
+function refreshRow(uid) {
+  const l = state.lines.find(x => x.uid === uid); if (!l) return;
+  const r = calcLine(l);
+  $("#tot-" + uid).innerHTML = `${fh(r.total)}<small>h</small>`;
+  const w = $("#warn-" + uid); w.querySelector("span").textContent = r.warn; w.hidden = !r.warn;
+  save(); renderBar();
+}
+
+/* ---------------- Events */
+function bind() {
+  const q = $("#q"); if (q) q.addEventListener("input", e => { query = e.target.value; $("#opts").innerHTML = optsHtml(); });
+  document.querySelectorAll("[data-field]").forEach(inp => {
+    inp.addEventListener("input", e => {
+      const l = state.lines.find(x => x.uid === +e.target.dataset.uid), f = e.target.dataset.field;
+      if (e.target.value !== "") { l[f] = Math.max(f === "qty" ? 1 : 0, Math.round(Number(e.target.value)) || 0); refreshRow(l.uid); }
+    });
+    inp.addEventListener("change", e => { const l = state.lines.find(x => x.uid === +e.target.dataset.uid); e.target.value = l[e.target.dataset.field]; });
+  });
+  const d = $("#designers"); if (d) d.addEventListener("change", e => { state.designers = Math.max(1, Math.round(Number(e.target.value)) || 1); save(); render(); });
+}
+
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.pick) {
+    const id = t.dataset.pick;
+    if (t.checked) state.lines.push({ uid: state.lines.reduce((m, l) => Math.max(m, l.uid), 0) + 1, id, cx: "m", qty: BY_ID[id].deck ? 20 : 1, rounds: P.defaultRounds });
+    else state.lines = state.lines.filter(l => l.id !== id);
+    save(); renderBar();
+  } else if (t.dataset.ready) { state.ready[+t.dataset.ready] = t.checked; save(); $("#ready-count").textContent = `${state.ready.filter(Boolean).length}/${READY.length}`; renderBar(); }
+  else if (t.dataset.factor) { state.factors[+t.dataset.factor] = t.checked; save(); $("#factor-sum").textContent = "+" + pct(calcAll(state).factorPct); renderBar(); }
+});
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.go != null && !t.disabled) return go(+t.dataset.go);
+  if (t.dataset.cat) { catFilter = t.dataset.cat; render(); return; }
+  if (t.dataset.cx) {
+    const l = state.lines.find(x => x.uid === +t.dataset.uid); l.cx = t.dataset.cx;
+    t.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === t)); refreshRow(l.uid); return;
+  }
+  if (t.dataset.step) {
+    const l = state.lines.find(x => x.uid === +t.dataset.uid), f = t.dataset.step;
+    l[f] = Math.max(f === "qty" ? 1 : 0, Number(l[f]) + Number(t.dataset.d));
+    $(`#${f}-${l.uid}`).value = l[f]; refreshRow(l.uid); return;
+  }
+  if (t.dataset.remove) { state.lines = state.lines.filter(l => l.uid !== +t.dataset.remove); save(); render(); return; }
+  if (t.dataset.des) { state.designers = Math.max(1, (Number(state.designers) || 1) + Number(t.dataset.des)); save(); render(); return; }
+});
+
+let armed = false, armT;
+$("#btn-reset").onclick = () => {
+  const b = $("#btn-reset").querySelector("span");
+  if (!armed && state.lines.length) { armed = true; b.textContent = "Click again to clear"; clearTimeout(armT); armT = setTimeout(() => { armed = false; b.textContent = "Reset"; }, 3000); return; }
+  armed = false; b.textContent = "Reset"; state = blank(); save(); render(); toast("Cleared");
+};
+
+function summaryText() {
+  const c = calcAll(state);
+  return [
+    `Design estimate · ${c.final ? "Final" : "Provisional"}`,
+    ...c.lines.map(r => `- ${nameOf(r.item)} × ${r.qty} (${CX.find(x => x[0] === r.line.cx)[1]}, ${r.rounds} design QA rounds): ${fh(r.total)} h`),
+    `Extra effort (${pct(c.factorPct)}): ${fh(c.adj)} h`,
+    `Buffer (${pct(P.buffer)}): ${fh(c.buffer)} h`,
+    `Total: ${fh(c.total)} h · ${c.days} working days (${c.designers} designer${c.designers === 1 ? "" : "s"})`
+  ].join("\n");
+}
+async function copySummary() {
+  const txt = summaryText();
+  try { await navigator.clipboard.writeText(txt); toast("Summary copied"); }
+  catch (e) {
+    const ta = document.createElement("textarea"); ta.value = txt; ta.style.cssText = "position:fixed;left:0;top:0;width:100%;height:40%;z-index:60";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); toast("Summary copied"); } catch (_) { toast("Press Ctrl/Cmd+C to copy"); }
+    setTimeout(() => ta.remove(), 4000);
+  }
+}
+
+render();
+window.__pip = { calcAll, calcLine };
+</script>
+
+</body>
+</html>
